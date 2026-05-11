@@ -1,0 +1,13 @@
+name = "aasa-worker"
+main = "src/index.js"
+compatibility_date = "2026-05-10"
+
+# One worker bound to four hostnames at the AASA path. Cloudflare runs
+# the worker only for these exact paths; everything else on each
+# hostname continues through the LB to the app origin unaffected.
+routes = [
+  { pattern = "track.pingolindev.com/.well-known/apple-app-site-association", zone_name = "pingolindev.com" },
+  { pattern = "track.pingolin.com/.well-known/apple-app-site-association",    zone_name = "pingolin.com" },
+  { pattern = "note.pingolindev.com/.well-known/apple-app-site-association",  zone_name = "pingolindev.com" },
+  { pattern = "note.pingolin.com/.well-known/apple-app-site-association",     zone_name = "pingolin.com" },
+]
