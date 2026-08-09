@@ -2,12 +2,25 @@ name = "aasa-worker"
 main = "src/index.js"
 compatibility_date = "2026-05-10"
 
-# One worker bound to four hostnames at the AASA path. Cloudflare runs
-# the worker only for these exact paths; everything else on each
+# Cloudflare runs the worker only for these exact paths; everything else on each
 # hostname continues through the LB to the app origin unaffected.
+#
+# The two platforms are bound to DIFFERENT hostnames, because the apps declare
+# their links on different hosts:
+#   iOS      — the web app hosts (track./note.), which is where universal links
+#              are claimed.
+#   Android  — the AUTH API host (api-auth.*), because that is the host in the
+#              verify-email App Link intent-filter in both apps' manifests.
+# A host missing from this list is a host where the worker never runs, no matter
+# what src/index.js says about it.
 routes = [
+  # iOS — apple-app-site-association
   { pattern = "track.pingolindev.com/.well-known/apple-app-site-association", zone_name = "pingolindev.com" },
   { pattern = "track.pingolin.com/.well-known/apple-app-site-association",    zone_name = "pingolin.com" },
   { pattern = "note.pingolindev.com/.well-known/apple-app-site-association",  zone_name = "pingolindev.com" },
   { pattern = "note.pingolin.com/.well-known/apple-app-site-association",     zone_name = "pingolin.com" },
+
+  # Android — assetlinks.json
+  { pattern = "api-auth.pingolindev.com/.well-known/assetlinks.json", zone_name = "pingolindev.com" },
+  { pattern = "api-auth.pingolin.com/.well-known/assetlinks.json",    zone_name = "pingolin.com" },
 ]
