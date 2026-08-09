@@ -22,19 +22,30 @@ const APPS = {
   "note.pingolin.com":     "com.pingolin.note",
 };
 
-// SHA-256 of the release signing certificate (O=Pingolin LLC), read from a
-// signed APK with `apksigner verify --print-certs`. Every flavour of both
-// Android apps is signed with this one key, so a single fingerprint covers all
-// of them.
-//
-// CAVEAT for Play distribution: if an app is enrolled in Play App Signing,
-// Google re-signs it and the installed APK carries GOOGLE's certificate, not
-// this one. That variant's fingerprint has to be copied from Play Console
-// (Setup -> App signing -> App signing key certificate) and added alongside
-// this one, or verification fails for Play installs only — which looks like
-// "App Links work when I sideload but not from the Store".
+// SHA-256 of our own release signing certificate (O=Pingolin LLC), read from a
+// signed APK with `apksigner verify --print-certs`. Every APK we build and sign
+// ourselves carries this: the dev builds published to ghcr, and the libre APKs.
 const RELEASE_CERT_SHA256 =
   "96:80:0D:E9:37:79:01:BA:57:00:BF:63:4B:62:B9:AE:25:B2:52:0F:F3:25:87:FB:C1:9C:85:C6:46:E3:B5:F7";
+
+// Google Play re-signs: we upload an AAB, Google generates the APKs it delivers
+// and signs them with ITS app-signing key, so a Play install carries a
+// certificate we never possessed. Those packages must therefore list two
+// fingerprints — ours for anything distributed directly, Google's for Store
+// installs — or verification fails for Store users ONLY, which presents as
+// "App Links work when I sideload but not from the Store".
+//
+// Play-signed, so PROD gms packages only. The dev packages are sideloaded from
+// ghcr and the .libre packages are never distributed through Play, so both keep
+// our certificate alone. Values from Play Console -> Setup -> App signing ->
+// "App signing key certificate" (NOT the upload key, which is ours and would
+// leave Store installs just as broken).
+const PLAY_APP_SIGNING_SHA256 = {
+  "com.pingolin.track":
+    "DD:C2:43:DE:F1:59:62:CA:1D:B0:85:DA:3C:4D:E1:1D:C5:40:92:1C:02:8D:10:72:6F:79:A6:E5:57:37:BC:33",
+  "com.pingolindev.note":
+    "86:4E:B2:0B:BE:23:A3:5B:88:C6:96:67:65:64:48:6B:4B:62:26:45:9A:A6:62:8C:0D:7A:54:AA:84:92:96:29",
+};
 
 // Host -> every application id allowed to claim that host's https links.
 // Ids are the base applicationId plus the flavour suffixes, in flavour-
@@ -73,15 +84,22 @@ function aasaFor(bundleId) {
 
 function assetlinksFor(packageNames) {
   // One statement per application id. Android requires the whole document to
-  // be a JSON array, even for a single app.
-  return packageNames.map((packageName) => ({
-    relation: ["delegate_permission/common.handle_all_urls"],
-    target: {
-      namespace: "android_app",
-      package_name: packageName,
-      sha256_cert_fingerprints: [RELEASE_CERT_SHA256],
-    },
-  }));
+  // be a JSON array, even for a single app. A package accepts any listed
+  // fingerprint, so listing both ours and Google's covers a Store install and
+  // a directly-distributed build of the same package simultaneously.
+  return packageNames.map((packageName) => {
+    const fingerprints = [RELEASE_CERT_SHA256];
+    const playCert = PLAY_APP_SIGNING_SHA256[packageName];
+    if (playCert) fingerprints.push(playCert);
+    return {
+      relation: ["delegate_permission/common.handle_all_urls"],
+      target: {
+        namespace: "android_app",
+        package_name: packageName,
+        sha256_cert_fingerprints: fingerprints,
+      },
+    };
+  });
 }
 
 function json(body) {
