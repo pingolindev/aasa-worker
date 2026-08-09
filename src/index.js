@@ -57,11 +57,13 @@ const ANDROID_APPS = {
     "com.pingolindev.note.dev",
     "com.pingolindev.note.dev.libre",
     "com.pingolin.track.dev",
+    "com.pingolin.track.dev.libre",
   ],
   "api-auth.pingolin.com": [
     "com.pingolindev.note",
     "com.pingolindev.note.libre",
     "com.pingolin.track",
+    "com.pingolin.track.libre",
   ],
 };
 
